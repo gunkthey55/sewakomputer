@@ -1,20 +1,20 @@
-import { forwardRef } from 'react';
-import { cn } from '../utils/helpers';
+import { forwardRef, type TextareaHTMLAttributes } from 'react'
+import { cn } from '@/utils/helpers'
 
-export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label?: string;
-  error?: string;
-  hint?: string;
+export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string
+  error?: string
+  helperText?: string
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, label, error, hint, id, ...props }, ref) => {
-    const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
-    
+  ({ className, label, error, helperText, id, ...props }, ref) => {
+    const inputId = id || label?.toLowerCase().replace(/\s+/g, '-')
+
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-foreground mb-1.5">
+          <label htmlFor={inputId} className="label">
             {label}
           </label>
         )}
@@ -22,27 +22,27 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'flex min-h-[80px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-            error && 'border-destructive focus-visible:ring-destructive',
+            'input resize-none',
+            error && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
             className
           )}
           aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
+          aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
           {...props}
         />
         {error && (
-          <p id={`${inputId}-error`} className="mt-1.5 text-sm text-destructive" role="alert">
+          <p id={`${inputId}-error`} className="mt-1 text-sm text-red-600" role="alert">
             {error}
           </p>
         )}
-        {hint && !error && (
-          <p id={`${inputId}-hint`} className="mt-1.5 text-sm text-muted-foreground">
-            {hint}
+        {helperText && !error && (
+          <p id={`${inputId}-helper`} className="mt-1 text-sm text-gray-500">
+            {helperText}
           </p>
         )}
       </div>
-    );
+    )
   }
-);
+)
 
-Textarea.displayName = 'Textarea';
+Textarea.displayName = 'Textarea'

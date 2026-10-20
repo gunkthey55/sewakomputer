@@ -74,7 +74,7 @@ export function DashboardPage() {
   const data = stats as DashboardStats;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="dashboard-page">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <Button variant="outline" onClick={refetch} isLoading={isLoading}>
@@ -82,7 +82,7 @@ export function DashboardPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4" data-testid="stat-cards">
         {statCards.map((stat) => {
           const value = data[stat.key as keyof DashboardStats] as number;
           const formattedValue = stat.format === 'currency' ? formatCurrency(value) : value.toLocaleString();
@@ -112,7 +112,7 @@ export function DashboardPage() {
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent data-testid="recent-activity-content">
             {recentActivity?.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">No recent activity</p>
             ) : (
@@ -148,7 +148,7 @@ export function DashboardPage() {
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent data-testid="quick-actions-content">
             <div className="grid grid-cols-2 gap-3">
               <Link to="/computers/create" className="no-underline">
                 <Button variant="outline" className="w-full h-20 flex-col gap-2">

@@ -1,114 +1,104 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(amount: number, currency = 'IDR'): string {
+  return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount)
 }
 
 export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOptions): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('en-US', {
-    year: 'numeric',
+  const d = typeof date === 'string' ? new Date(date) : date
+  return d.toLocaleDateString('id-ID', {
+    day: '2-digit',
     month: 'short',
-    day: 'numeric',
+    year: 'numeric',
     ...options,
-  });
+  })
 }
 
 export function formatDateTime(date: string | Date): string {
-  return formatDate(date, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatDate(date, { hour: '2-digit', minute: '2-digit' })
 }
 
-export function formatRelativeTime(date: string | Date): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffSecs = Math.floor(diffMs / 1000);
-  const diffMins = Math.floor(diffSecs / 60);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffSecs < 60) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return formatDate(d);
+export function getStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    active: 'bg-green-100 text-green-800',
+    pending: 'bg-yellow-100 text-yellow-800',
+    overdue: 'bg-red-100 text-red-800',
+    completed: 'bg-gray-100 text-gray-800',
+    cancelled: 'bg-gray-100 text-gray-600',
+  }
+  return colors[status] || 'bg-gray-100 text-gray-800'
 }
 
-export function truncate(str: string, length: number): string {
-  if (str.length <= length) return str;
-  return `${str.slice(0, length)}...`;
+export function getStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    active: 'Aktif',
+    pending: 'Menunggu',
+    overdue: 'Terlambat',
+    completed: 'Selesai',
+    cancelled: 'Dibatalkan',
+  }
+  return labels[status] || status
 }
 
-export function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+export function daysBetween(start: string, end: string): number {
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  const diffTime = Math.abs(endDate.getTime() - startDate.getTime())
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+}
+
+export function isOverdue(endDate: string, status: string): boolean {
+  if (status === 'completed' || status === 'cancelled') return false
+  return new Date(endDate) < new Date()
+}
+
+export function isEndingSoon(endDate: string, days = 3): boolean {
+  const end = new Date(endDate)
+  const now = new Date()
+  const diffTime = end.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays >= 0 && diffDays <= days
+}
+
+export function generateCSV(data: Record<string, unknown>[], filename: string): void {
+  if (data.length === 0) return
+  
+  const headers = Object.keys(data[0])
+  const rows = data.map((row) =>
+    headers.map((header) => {
+      const value = row[header]
+      if (value === null || value === undefined) return ''
+      if (typeof value === 'object') return JSON.stringify(value)
+      return String(value).includes(',') ? `"${value}"` : String(value)
+    }).join(',')
+  )
+  
+  const csv = [headers.join(','), ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `${filename}.csv`
+  link.click()
+  URL.revokeObjectURL(link.href)
 }
 
 export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
-  let timeout: ReturnType<typeof setTimeout> | null = null;
+  let timeout: ReturnType<typeof setTimeout> | null = null
   return (...args: Parameters<T>) => {
-    if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-}
-
-export function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-export function getStatusColor(status: string): string {
-  const colors: Record<string, string> = {
-    available: 'badge-success',
-    rented: 'badge-info',
-    maintenance: 'badge-warning',
-    retired: 'badge-destructive',
-    pending: 'badge-warning',
-    active: 'badge-success',
-    completed: 'badge-default',
-    cancelled: 'badge-destructive',
-    overdue: 'badge-destructive',
-    installed: 'badge-info',
-  };
-  return colors[status] || 'badge-default';
-}
-
-export function getComponentTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    cpu: 'CPU',
-    ram: 'RAM',
-    storage: 'Storage',
-    gpu: 'GPU',
-    motherboard: 'Motherboard',
-    psu: 'Power Supply',
-    cooler: 'Cooler',
-    case: 'Case',
-    monitor: 'Monitor',
-    keyboard: 'Keyboard',
-    mouse: 'Mouse',
-    other: 'Other',
-  };
-  return labels[type] || type;
+    if (timeout) clearTimeout(timeout)
+    timeout = setTimeout(() => func(...args), wait)
+  }
 }

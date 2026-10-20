@@ -1,28 +1,28 @@
-import { forwardRef } from 'react';
-import { cn } from '../utils/helpers';
+import { forwardRef, type SelectHTMLAttributes } from 'react'
+import { cn } from '@/utils/helpers'
 
 export interface SelectOption {
-  value: string;
-  label: string;
-  disabled?: boolean;
+  value: string
+  label: string
+  disabled?: boolean
 }
 
-export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string;
-  error?: string;
-  hint?: string;
-  options: SelectOption[];
-  placeholder?: string;
+export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+  label?: string
+  error?: string
+  helperText?: string
+  options: SelectOption[]
+  placeholder?: string
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, hint, options, placeholder, id, ...props }, ref) => {
-    const selectId = id || label?.toLowerCase().replace(/\s+/g, '-');
-    
+  ({ className, label, error, helperText, options, placeholder, id, ...props }, ref) => {
+    const selectId = id || label?.toLowerCase().replace(/\s+/g, '-')
+
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-medium text-foreground mb-1.5">
+          <label htmlFor={selectId} className="label">
             {label}
           </label>
         )}
@@ -30,12 +30,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={selectId}
           className={cn(
-            'flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-            error && 'border-destructive focus-visible:ring-destructive',
+            'input appearance-none bg-no-repeat bg-right pr-10',
+            'bg-[url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 20 20%27%3E%3Cpath stroke=%27%236b7280%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%271.5%27 d=%27M6 8l4 4 4-4%27/%3E%3C/svg%3E")]',
+            error && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
             className
           )}
           aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined}
+          aria-describedby={error ? `${selectId}-error` : helperText ? `${selectId}-helper` : undefined}
+          data-testid={props['data-testid'] || `select-${selectId}`}
           {...props}
         >
           {placeholder && (
@@ -50,18 +52,18 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ))}
         </select>
         {error && (
-          <p id={`${selectId}-error`} className="mt-1.5 text-sm text-destructive" role="alert">
+          <p id={`${selectId}-error`} className="mt-1 text-sm text-red-600" role="alert">
             {error}
           </p>
         )}
-        {hint && !error && (
-          <p id={`${selectId}-hint`} className="mt-1.5 text-sm text-muted-foreground">
-            {hint}
+        {helperText && !error && (
+          <p id={`${selectId}-helper`} className="mt-1 text-sm text-gray-500">
+            {helperText}
           </p>
         )}
       </div>
-    );
+    )
   }
-);
+)
 
-Select.displayName = 'Select';
+Select.displayName = 'Select'

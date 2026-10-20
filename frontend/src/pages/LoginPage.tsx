@@ -48,7 +48,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/5 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/5 px-4" data-testid="login-page">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -58,7 +58,7 @@ export function LoginPage() {
           <CardDescription>Sign in to your Computer Rental System account</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" data-testid="login-form">
             {error && (
               <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -78,6 +78,7 @@ export function LoginPage() {
                   error={errors.email?.message}
                   {...register('email')}
                   disabled={isSubmitting || authLoading}
+                  data-testid="email-input"
                 />
               </div>
             </div>
@@ -99,11 +100,12 @@ export function LoginPage() {
                   error={errors.password?.message}
                   {...register('password')}
                   disabled={isSubmitting || authLoading}
+                  data-testid="password-input"
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" isLoading={isSubmitting || authLoading}>
+            <Button type="submit" className="w-full" size="lg" isLoading={isSubmitting || authLoading} data-testid="login-submit">
               Sign In
             </Button>
           </form>
