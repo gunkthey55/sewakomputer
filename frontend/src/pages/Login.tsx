@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '@/stores/authStore'
-import { useLogin } from '@/api/hooks'
+import { useLogin, useMe } from '@/api/hooks'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
@@ -22,6 +22,7 @@ export function Login() {
   const { setAuth, setLoading } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const loginMutation = useLogin()
+  const { refetch: fetchUser } = useMe()
 
   const {
     register,
@@ -39,7 +40,11 @@ export function Login() {
     setLoading(true)
     try {
       const response = await loginMutation.mutateAsync(data)
-      setAuth(response.user, response.access_token, response.refresh_token)
+      // Fetch user info after successful login
+      const userResult = await fetchUser()
+      const user = userResult.data
+      if (!user) throw new Error('Failed to fetch user')
+      setAuth(user, response.access_token, response.refresh_token)
       toast.success('Berhasil masuk')
       navigate('/dashboard')
     } catch (error) {

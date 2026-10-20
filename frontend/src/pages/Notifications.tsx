@@ -7,10 +7,13 @@ import { cn } from '@/utils/helpers'
 import { BellIcon, CheckCircleIcon, EnvelopeOpenIcon } from '@heroicons/react/24/outline'
 
 export function Notifications() {
-  const { data: notifications, isLoading } = useNotifications()
-  const { data: unreadCount } = useUnreadNotificationsCount()
+  const { data: notificationsData, isLoading } = useNotifications()
+  const { data: unreadCountData } = useUnreadNotificationsCount()
   const markRead = useMarkNotificationRead()
   const markAllRead = useMarkAllNotificationsRead()
+
+  const notifications = notificationsData?.items || []
+  const unreadCount = unreadCountData?.unread_count || 0
 
   const handleMarkRead = (id: number) => {
     markRead.mutate(id)
@@ -35,7 +38,7 @@ export function Notifications() {
           <h1 className="text-2xl font-bold text-gray-900">Notifikasi</h1>
           <p className="text-gray-500">Kelola notifikasi dan reminder sewa</p>
         </div>
-        {unreadCount && unreadCount > 0 && (
+        {unreadCount > 0 && (
           <Button variant="secondary" size="sm" onClick={handleMarkAllRead} disabled={markAllRead.isPending}>
             <CheckCircleIcon className="h-4 w-4" />
             Tandai Semua Dibaca
@@ -46,39 +49,39 @@ export function Notifications() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Semua Notifikasi</CardTitle>
-          {unreadCount && unreadCount > 0 && (
+          {unreadCount > 0 && (
             <Badge variant="active">{unreadCount} belum dibaca</Badge>
           )}
         </CardHeader>
         <CardContent className="p-0">
-          {notifications?.length === 0 ? (
+          {notifications.length === 0 ? (
             <div className="text-center py-12">
               <BellIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">Belum ada notifikasi</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {notifications?.map((notification: { id: number; title: string; message: string; is_read: boolean; created_at: string; rental?: { status: string; customer_name: string } }) => (
+              {notifications.map((notification: any) => (
                 <div
                   key={notification.id}
                   className={cn(
                     'p-4 hover:bg-gray-50 transition-colors',
-                    !notification.is_read && 'bg-blue-50'
+                    notification.status !== 'read' && 'bg-blue-50'
                   )}
                 >
                   <div className="flex items-start gap-4">
                     <div
                       className={cn(
                         'w-2 h-2 mt-2 rounded-full flex-shrink-0',
-                        !notification.is_read ? 'bg-primary-500' : 'bg-gray-300'
+                        notification.status !== 'read' ? 'bg-primary-500' : 'bg-gray-300'
                       )}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h4 className={cn('font-medium', !notification.is_read && 'font-semibold')}>
+                        <h4 className={cn('font-medium', notification.status !== 'read' && 'font-semibold')}>
                           {notification.title}
                         </h4>
-                        {!notification.is_read && (
+                        {notification.status !== 'read' && (
                           <Badge variant="active" className="text-xs">Baru</Badge>
                         )}
                       </div>
@@ -90,12 +93,12 @@ export function Notifications() {
                             <Badge variant={notification.rental.status as any}>
                               {getStatusLabel(notification.rental.status)}
                             </Badge>
-                            {notification.rental.customer_name}
+                            {notification.rental.user?.full_name || notification.rental.user?.email}
                           </span>
                         )}
                       </div>
                     </div>
-                    {!notification.is_read && (
+                    {notification.status !== 'read' && (
                       <Button
                         variant="ghost"
                         size="sm"
