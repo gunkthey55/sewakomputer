@@ -44,15 +44,21 @@ export function Calendar() {
 
   const events = useMemo((): CalendarEvent[] => {
     if (!data?.items) return []
-    return data.items.map((rental) => ({
-      id: rental.id,
-      title: `${rental.customer_name} - ${rental.computer?.name || 'PC'}`,
-      start: new Date(rental.start_date),
-      end: new Date(rental.end_date),
-      resource: rental,
-      backgroundColor: statusColors[rental.status] || '#6b7280',
-      borderColor: statusColors[rental.status] || '#6b7280',
-    }))
+    return data.items.map((rental) => {
+      // Get the first computer from items for display
+      const firstItem = rental.items?.[0]
+      const computerName = firstItem?.computer?.name || firstItem?.computer?.brand + ' ' + firstItem?.computer?.model || 'PC'
+      const customerName = rental.user?.full_name || 'Unknown'
+      return {
+        id: rental.id,
+        title: `${customerName} - ${computerName}`,
+        start: new Date(rental.start_date),
+        end: new Date(rental.end_date),
+        resource: rental,
+        backgroundColor: statusColors[rental.status] || '#6b7280',
+        borderColor: statusColors[rental.status] || '#6b7280',
+      }
+    })
   }, [data])
 
   const handleSelectEvent = (event: { resource: any }) => {
@@ -161,19 +167,19 @@ export function Calendar() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500">Pelanggan</p>
-                <p className="font-medium">{selectedRental.customer_name}</p>
+                <p className="font-medium">{selectedRental.user?.full_name || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium">{selectedRental.customer_email || '-'}</p>
+                <p className="font-medium">{selectedRental.user?.email || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Telepon</p>
-                <p className="font-medium">{selectedRental.customer_phone || '-'}</p>
+                <p className="font-medium">{selectedRental.user?.phone || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Komputer</p>
-                <p className="font-medium">{selectedRental.computer?.name || '-'}</p>
+                <p className="font-medium">{selectedRental.items?.[0]?.computer?.name || selectedRental.items?.[0]?.computer?.brand + ' ' + selectedRental.items?.[0]?.computer?.model || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Mulai</p>
@@ -192,14 +198,14 @@ export function Calendar() {
                 <p className="font-medium">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(selectedRental.total_price)}</p>
               </div>
             </div>
-            {selectedRental.components?.length > 0 && (
+            {selectedRental.items?.length > 0 && (
               <div>
-                <p className="text-sm text-gray-500 mb-2">Komponen:</p>
+                <p className="text-sm text-gray-500 mb-2">Item Sewa:</p>
                 <ul className="space-y-1 text-sm">
-                  {selectedRental.components.map((c: any) => (
-                    <li key={c.id} className="flex justify-between">
-                      <span>{c.component?.name} x{c.quantity}</span>
-                      <span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(c.price_per_day)}/hari</span>
+                  {selectedRental.items.map((item: any) => (
+                    <li key={item.id} className="flex justify-between">
+                      <span>{item.computer?.name || item.computer?.brand + ' ' + item.computer?.model} x{item.quantity}</span>
+                      <span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.unit_price)}/hari</span>
                     </li>
                   ))}
                 </ul>
