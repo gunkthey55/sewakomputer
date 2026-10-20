@@ -43,6 +43,12 @@ class NotificationStatusEnum(str, enum.Enum):
     FAILED = "failed"
 
 
+class ReminderChannelEnum(str, enum.Enum):
+    EMAIL = "email"
+    TELEGRAM = "telegram"
+    IN_APP = "in_app"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -149,6 +155,7 @@ class Rental(Base):
     __table_args__ = (
         Index("ix_rentals_user_status", "user_id", "status"),
         Index("ix_rentals_dates", "start_date", "end_date"),
+        Index("ix_rentals_status_end_date", "status", "end_date"),
     )
 
     def __repr__(self) -> str:
@@ -220,7 +227,34 @@ class Schedule(Base):
 
     __table_args__ = (
         Index("ix_schedules_computer_time", "computer_id", "start_time", "end_time"),
+        Index("ix_schedules_computer_active_time", "computer_id", "is_active", "start_time", "end_time"),
     )
 
     def __repr__(self) -> str:
         return f"<Schedule(id={self.id}, name={self.name}, computer_id={self.computer_id})>"
+
+
+class Reminder(Base):
+    __tablename__ = "reminders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    rental_id: Mapped[int] = mapped_column(ForeignKey("rentals.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel: Mapped[ReminderChannelEnum] = mapped_column(Enum(ReminderChannelEnum), nullable=False)
+    remind_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    days_before: Mapped[int] = mapped_column(Integer, nullable=False, comment="Negative = after end_date (overdue)")
+    is_sent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    notification_id: Mapped[Optional[int]] = mapped_column(ForeignKey("notifications.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    rental: Mapped["Rental"] = relationship("Rental")
+    notification: Mapped[Optional["Notification"]] = relationship("Notification")
+
+    __table_args__ = (
+        Index("ix_reminders_rental_channel", "rental_id", "channel"),
+        Index("ix_reminders_pending", "is_sent", "remind_at"),
+        Index("ix_reminders_rental_days", "rental_id", "days_before", unique=True),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Reminder(id={self.id}, rental_id={self.rental_id}, channel={self.channel}, days_before={self.days_before})>"
