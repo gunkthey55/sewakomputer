@@ -9,58 +9,37 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import async_session_maker
 from app.models import Rental, RentalStatusEnum, User
 from app.services.notification import notification_service
+from app.services.reminder import reminder_service
 
 logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler(timezone="Asia/Kuala_Lumpur")
 
 
-async def check_expiring_rentals():
-    """Check for rentals expiring in 1-7 days and send reminders."""
-    logger.info("Running daily expiring rentals check...")
+async def create_reminders_for_active_rentals():
+    """Create reminder records for all active/pending rentals."""
+    logger.info("Creating reminders for active rentals...")
     async with async_session_maker() as session:
-        now = datetime.utcnow()
-        for days in range(1, 8):
-            target_date = now + timedelta(days=days)
-            start_of_day = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_of_day = target_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-
-            stmt = select(Rental).where(
-                and_(
-                    Rental.status == RentalStatusEnum.ACTIVE,
-                    Rental.end_date >= start_of_day,
-                    Rental.end_date <= end_of_day,
-                )
-            )
-            result = await session.execute(stmt)
-            rentals = result.scalars().all()
-
-            for rental in rentals:
-                await notification_service.send_rental_reminder(rental, days)
-                logger.info(f"Sent {days}-day reminder for rental {rental.id}")
-
-
-async def check_today_rentals():
-    """Check for rentals due today (hourly)."""
-    logger.info("Running hourly today rentals check...")
-    async with async_session_maker() as session:
-        now = datetime.utcnow()
-        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day = now.replace(hour=23, minute=59, second=59, microsecond=999999)
-
         stmt = select(Rental).where(
             and_(
-                Rental.status == RentalStatusEnum.ACTIVE,
-                Rental.end_date >= start_of_day,
-                Rental.end_date <= end_of_day,
+                Rental.status.in_([RentalStatusEnum.ACTIVE, RentalStatusEnum.PENDING]),
+                Rental.end_date > datetime.utcnow(),
             )
         )
         result = await session.execute(stmt)
         rentals = result.scalars().all()
 
         for rental in rentals:
-            await notification_service.send_rental_reminder(rental, 0)
-            logger.info(f"Sent today reminder for rental {rental.id}")
+            await reminder_service.create_reminders_for_rental(rental)
+
+    logger.info(f"Created reminders for {len(rentals)} rentals")
+
+
+async def send_pending_reminders():
+    """Send all pending reminders."""
+    logger.info("Sending pending reminders...")
+    sent = await reminder_service.send_pending_reminders()
+    logger.info(f"Sent {sent} reminders")
 
 
 async def check_overdue_rentals():
@@ -109,21 +88,21 @@ async def auto_complete_rentals():
 
 def start_scheduler():
     """Start the APScheduler with all jobs."""
-    # Daily at 08:00 - check expiring rentals (1-7 days)
+    # Daily at 08:00 - create reminders for active rentals
     scheduler.add_job(
-        check_expiring_rentals,
+        create_reminders_for_active_rentals,
         CronTrigger(hour=8, minute=0),
-        id="daily_expiring_check",
-        name="Daily Expiring Rentals Check",
+        id="daily_create_reminders",
+        name="Daily Create Reminders for Active Rentals",
         replace_existing=True,
     )
 
-    # Hourly - check today's rentals
+    # Every 15 minutes - send pending reminders
     scheduler.add_job(
-        check_today_rentals,
-        IntervalTrigger(hours=1),
-        id="hourly_today_check",
-        name="Hourly Today Rentals Check",
+        send_pending_reminders,
+        IntervalTrigger(minutes=15),
+        id="send_pending_reminders",
+        name="Send Pending Reminders",
         replace_existing=True,
     )
 

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from decimal import Decimal
-from app.models import RoleEnum, RentalStatusEnum, NotificationTypeEnum, NotificationStatusEnum
+from app.models import RoleEnum, RentalStatusEnum, NotificationTypeEnum, NotificationStatusEnum, ReminderChannelEnum
 
 
 class UserBase(BaseModel):
@@ -275,3 +275,18 @@ class MessageResponse(BaseModel):
 
 UserWithRelations.model_rebuild()
 ComputerWithComponents.model_rebuild()
+
+
+class ReminderResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    rental_id: int
+    channel: ReminderChannelEnum
+    days_before: int
+    scheduled_for: datetime
+    sent_at: Optional[datetime] = None
+    is_sent: bool
+    retry_count: int
+    error_message: Optional[str] = None
+    created_at: datetime

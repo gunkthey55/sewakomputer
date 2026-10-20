@@ -43,6 +43,12 @@ class NotificationStatusEnum(str, enum.Enum):
     FAILED = "failed"
 
 
+class ReminderChannelEnum(str, enum.Enum):
+    IN_APP = "in_app"
+    TELEGRAM = "telegram"
+    EMAIL = "email"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -197,6 +203,31 @@ class Notification(Base):
 
     def __repr__(self) -> str:
         return f"<Notification(id={self.id}, user_id={self.user_id}, type={self.type}, status={self.status})>"
+
+
+class Reminder(Base):
+    __tablename__ = "reminders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    rental_id: Mapped[int] = mapped_column(ForeignKey("rentals.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel: Mapped[ReminderChannelEnum] = mapped_column(Enum(ReminderChannelEnum), nullable=False)
+    days_before: Mapped[int] = mapped_column(Integer, nullable=False)
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    is_sent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    rental: Mapped["Rental"] = relationship("Rental", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint("rental_id", "days_before", "channel", name="uq_reminder_rental_days_channel"),
+        Index("ix_reminders_scheduled_sent", "scheduled_for", "is_sent"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Reminder(id={self.id}, rental_id={self.rental_id}, days_before={self.days_before}, channel={self.channel})>"
 
 
 class Schedule(Base):

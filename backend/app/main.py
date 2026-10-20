@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import get_settings
 from app.db.session import init_db, close_db
 from app.services.scheduler import start_scheduler, stop_scheduler
-from app.api import auth, users, computers, rentals, notifications, schedules
+from app.api import auth, users, computers, rentals, notifications, schedules, reminders
 
 settings = get_settings()
 
@@ -46,6 +46,7 @@ app.include_router(computers.router)
 app.include_router(rentals.router)
 app.include_router(notifications.router)
 app.include_router(schedules.router)
+app.include_router(reminders.router)
 
 
 @app.get("/")

@@ -13,6 +13,7 @@ from app.services.rental import RentalService
 from app.services.notification import notification_service, NotificationService
 from app.services.notification_crud import NotificationService as NotificationCRUDService
 from app.services.schedule import ScheduleService
+from app.services.reminder import reminder_service, ReminderService
 from app.services.scheduler import start_scheduler, stop_scheduler, scheduler
 
 __all__ = [
@@ -31,6 +32,8 @@ __all__ = [
     "NotificationService",
     "NotificationCRUDService",
     "ScheduleService",
+    "reminder_service",
+    "ReminderService",
     "start_scheduler",
     "stop_scheduler",
     "scheduler",
