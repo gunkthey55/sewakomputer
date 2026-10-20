@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  backend:
+    # Mount source for hot reload with uvicorn --reload
+    volumes:
+      - ./backend:/app
+    environment:
+      - DEBUG=true
+      - ENVIRONMENT=development
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    ports:
+      - "8000:8000"
+
+  frontend:
+    # Use Vite dev server with HMR
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_API_BASE_URL: http://localhost/api
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    ports:
+      - "5173:5173"
+
+  bot:
+    # Mount source for hot reload
+    volumes:
+      - ./bot:/app
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - BACKEND_API_URL=http://backend:8000
+      - LOG_LEVEL=DEBUG
+    command: ["python", "main.py"]
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  appsewa:
+    # Mount source for hot reload
+    volumes:
+      - ./backend-appsewa:/app
+    environment:
+      - DATABASE_URL=mysql+aiomysql://root:rootpassword@mysql:3306/rental_system
+      - SECRET_KEY=${SECRET_KEY}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - SERVICE_LOG_LEVEL=DEBUG
+      - SERVICE_PID_FILE=/var/run/backend-appsewa.pid
+    command: ["python", "main.py"]
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+  nginx:
+    # In dev we can bypass nginx or keep it proxying to dev servers
+    # Here we adjust upstream to point to dev ports
+    volumes:
+      - ./docker/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"

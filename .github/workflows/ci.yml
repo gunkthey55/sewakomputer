@@ -1,0 +1,211 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  MYSQL_ROOT_PASSWORD: rootpassword
+  MYSQL_DATABASE: rental_db
+  MYSQL_USER: rental_user
+  MYSQL_PASSWORD: rental_password
+  SECRET_KEY: test-secret-key-for-ci-min-32-chars-long
+  TELEGRAM_BOT_TOKEN: ""
+  TELEGRAM_CHAT_ID: ""
+
+jobs:
+  lint-and-test-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: rental_db
+          MYSQL_USER: rental_user
+          MYSQL_PASSWORD: rental_password
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping -h localhost" --health-interval=10s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov httpx pytest-mock freezegun
+      
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            mysqladmin ping -h 127.0.0.1 -u rental_user -prental_password && break
+            sleep 2
+          done
+      
+      - name: Run Alembic migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: mysql+pymysql://rental_user:rental_password@127.0.0.1:3306/rental_db
+      
+      - name: Run tests with coverage
+        run: |
+          pytest --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=80
+        env:
+          DATABASE_URL: mysql+pymysql://rental_user:rental_password@127.0.0.1:3306/rental_db
+          REDIS_URL: redis://127.0.0.1:6379/0
+          SECRET_KEY: test-secret-key-for-ci-min-32-chars-long
+          ALGORITHM: HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES: 30
+          REFRESH_TOKEN_EXPIRE_DAYS: 7
+          TZ: Asia/Jakarta
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./backend/coverage.xml
+          flags: backend
+
+  lint-and-test-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run lint
+        run: npm run lint
+      
+      - name: Run type check
+        run: npm run typecheck
+      
+      - name: Run unit tests
+        run: npm run test -- --run --coverage
+      
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: http://localhost:8000
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [lint-and-test-backend, lint-and-test-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Start full stack
+        run: docker compose up -d
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: rental_db
+          MYSQL_USER: rental_user
+          MYSQL_PASSWORD: rental_password
+          SECRET_KEY: test-secret-key-for-ci-min-32-chars-long
+      
+      - name: Wait for services
+        run: |
+          for i in {1..60}; do
+            curl -f http://localhost:8000/health && break
+            sleep 3
+          done
+          for i in {1..30}; do
+            curl -f http://localhost:5173 && break
+            sleep 2
+          done
+      
+      - name: Set up Node.js for Playwright
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Playwright
+        run: |
+          cd frontend
+          npm ci
+          npx playwright install --with-deps chromium firefox webkit
+      
+      - name: Run E2E tests
+        run: |
+          cd frontend
+          npx playwright test
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:5173
+          API_BASE_URL: http://localhost:8000
+      
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/test-results/
+          retention-days: 7
+
+  contract-tests:
+    runs-on: ubuntu-latest
+    needs: lint-and-test-backend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install schemathesis
+        run: pip install schemathesis[hypothesis]
+      
+      - name: Start backend
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 10
+      
+      - name: Run contract tests
+        run: |
+          schemathesis run --checks=all http://localhost:8000/openapi.json --base-url=http://localhost:8000
+        continue-on-error: true
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [lint-and-test-backend, lint-and-test-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build backend image
+        run: docker build -t rental-backend:test ./backend
+      
+      - name: Build frontend image
+        run: docker build -t rental-frontend:test ./frontend
+      
+      - name: Test docker compose
+        run: |
+          docker compose config --quiet
+          echo "Docker Compose config valid"
+

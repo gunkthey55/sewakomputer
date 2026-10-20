@@ -1,0 +1,14 @@
+export { LoginPage } from './LoginPage';
+export { DashboardPage } from './DashboardPage';
+export { ComputersPage } from './ComputersPage';
+export { ComputerFormPage } from './ComputerFormPage';
+export { ComputerDetailPage } from './ComputerDetailPage';
+export { ComponentsPage } from './ComponentsPage';
+export { ComponentFormPage } from './ComponentFormPage';
+export { ComponentDetailPage } from './ComponentDetailPage';
+export { RentalsPage } from './RentalsPage';
+export { RentalFormPage } from './RentalFormPage';
+export { RentalDetailPage } from './RentalDetailPage';
+export { CalendarPage } from './CalendarPage';
+export { NotificationsPage } from './NotificationsPage';
+export { SettingsPage } from './SettingsPage';
