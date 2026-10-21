@@ -1,3 +1,8 @@
+import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import reactRefreshPlugin from 'eslint-plugin-react-refresh';
+import babelParser from '@babel/eslint-parser';
+
 export default [
   { ignores: ['dist', 'node_modules', '.turbo'] },
   {
@@ -5,26 +10,36 @@ export default [
     languageOptions: {
       ecmaVersion: 2020,
       globals: { browser: true, es2020: true },
+      parser: babelParser,
       parserOptions: {
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
         sourceType: 'module',
+        requireConfigFile: false,
+        babelOptions: {
+          presets: [
+            ['@babel/preset-react', { runtime: 'automatic' }],
+            '@babel/preset-typescript',
+          ],
+        },
       },
     },
     settings: { react: { version: '18.3' } },
     plugins: {
-      react: await import('eslint-plugin-react'),
-      'react-hooks': await import('eslint-plugin-react-hooks'),
-      'react-refresh': await import('eslint-plugin-react-refresh'),
+      react: reactPlugin,
+      'react-hooks': reactHooksPlugin,
+      'react-refresh': reactRefreshPlugin,
     },
     rules: {
-      ...require('eslint-plugin-react').configs.recommended.rules,
-      ...require('eslint-plugin-react-hooks').configs.recommended.rules,
+      ...reactPlugin.configs.recommended.rules,
+      ...reactHooksPlugin.configs.recommended.rules,
       'react/jsx-no-target-blank': 'off',
+      'react/react-in-jsx-scope': 'off',
+      'react-hooks/incompatible-library': 'off',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
       ],
     },
   },
-]
+];

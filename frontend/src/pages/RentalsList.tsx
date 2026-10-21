@@ -7,6 +7,7 @@ import { Table, Pagination } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { cn } from '@/utils/helpers'
+import type { RentalStatus } from '@/api/types'
 import {
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
@@ -15,8 +16,8 @@ import {
 
 const statusOptions = [
   { value: '', label: 'Semua Status' },
-  { value: 'active', label: 'Aktif' },
   { value: 'pending', label: 'Menunggu' },
+  { value: 'active', label: 'Aktif' },
   { value: 'overdue', label: 'Terlambat' },
   { value: 'completed', label: 'Selesai' },
   { value: 'cancelled', label: 'Dibatalkan' },
@@ -27,46 +28,54 @@ const sortOptions = [
   { value: 'start_date', label: 'Tanggal Mulai' },
   { value: 'end_date', label: 'Tanggal Selesai' },
   { value: 'total_price', label: 'Total Harga' },
-  { value: 'customer_name', label: 'Nama Pelanggan' },
 ]
 
 export function RentalsList() {
-  const [filters, setFilters] = useState({
-    status: '',
-    customer_name: '',
-    date_from: '',
-    date_to: '',
+  const [filters, setFilters] = useState<{
+    status: RentalStatus | undefined
+    search: string
+    page: number
+    page_size: number
+  }>({
+    status: undefined,
+    search: '',
     page: 1,
     page_size: 10,
-    sort_by: 'created_at',
-    sort_order: 'desc' as 'asc' | 'desc',
   })
 
   const { data, isLoading, error } = useRentals(filters)
 
   const rentalColumns = [
-    { key: 'customer_name', header: 'Pelanggan' },
-    { key: 'computer.name', header: 'Komputer', render: (row: { computer?: { name: string } }) => row.computer?.name || '-' },
-    { key: 'start_date', header: 'Mulai', render: (row: { start_date: string }) => row.start_date },
-    { key: 'end_date', header: 'Selesai', render: (row: { end_date: string }) => row.end_date },
+    { 
+      key: 'user', 
+      header: 'Pelanggan', 
+      render: (row: any) => row.user?.full_name || row.user?.email || '-' 
+    },
+    { 
+      key: 'items', 
+      header: 'Item Sewa', 
+      render: (row: any) => row.items?.map((item: any) => item.computer?.name || item.computer?.brand + ' ' + item.computer?.model).join(', ') || '-' 
+    },
+    { key: 'start_date', header: 'Mulai', render: (row: any) => row.start_date },
+    { key: 'end_date', header: 'Selesai', render: (row: any) => row.end_date },
     {
       key: 'status',
       header: 'Status',
-      render: (row: { status: string }) => (
+      render: (row: any) => (
         <Badge variant={row.status as any}>{getStatusLabel(row.status)}</Badge>
       ),
     },
     {
       key: 'total_price',
       header: 'Total',
-      render: (row: { total_price: number }) => formatCurrency(row.total_price),
+      render: (row: any) => formatCurrency(row.total_price),
       className: 'text-right',
     },
     {
       key: 'actions',
       header: '',
-      render: (row: { id: number }) => (
-        <div className="flex items-center gap-2">
+      render: (row: any) => (
+        <div className="flex items-center gap-2 justify-end">
           <Button variant="ghost" size="sm" onClick={() => window.location.href = `/rentals/${row.id}/edit`}>
             Edit
           </Button>
@@ -81,24 +90,20 @@ export function RentalsList() {
   }
 
   const debouncedSearch = debounce((value: unknown) => {
-    handleFilterChange('customer_name', value as string)
+    handleFilterChange('search', value as string)
   }, 300)
 
   const handleExportCSV = () => {
     if (!data?.items.length) return
-    const exportData = data.items.map((rental) => ({
+    const exportData = data.items.map((rental: any) => ({
       ID: rental.id,
-      Pelanggan: rental.customer_name,
-      Email: rental.customer_email || '-',
-      Telepon: rental.customer_phone || '-',
-      Komputer: rental.computer?.name || '-',
+      Pelanggan: rental.user?.full_name || rental.user?.email || '-',
       'Tanggal Mulai': rental.start_date,
       'Tanggal Selesai': rental.end_date,
       Status: getStatusLabel(rental.status),
       'Total Harga': formatCurrency(rental.total_price),
-      'Dibayar': formatCurrency(rental.paid_amount),
-      'Status Pembayaran': rental.payment_status,
-      'Dibuat': rental.created_at,
+      Item: rental.items?.map((item: any) => `${item.computer?.name || ''} x${item.quantity}`).join('; ') || '-',
+      Dibuat: rental.created_at,
     }))
     
     const headers = Object.keys(exportData[0])
@@ -137,8 +142,8 @@ export function RentalsList() {
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Cari nama pelanggan..."
-              value={filters.customer_name}
+              placeholder="Cari pelanggan..."
+              value={filters.search}
               onChange={(e) => debouncedSearch(e.target.value)}
               className="input pl-10"
             />
@@ -150,43 +155,6 @@ export function RentalsList() {
             placeholder="Filter Status"
             className="w-full sm:w-48"
           />
-          <Select
-            options={sortOptions}
-            value={filters.sort_by}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleFilterChange('sort_by', e.target.value)}
-            placeholder="Urutkan"
-            className="w-full sm:w-48"
-          />
-          <Select
-            options={[
-              { value: 'desc', label: 'Menurun' },
-              { value: 'asc', label: 'Menaik' },
-            ]}
-            value={filters.sort_order}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleFilterChange('sort_order', e.target.value)}
-            className="w-full sm:w-32"
-          />
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Dari:</label>
-            <input
-              type="date"
-              value={filters.date_from}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFilterChange('date_from', e.target.value)}
-              className="input w-40"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Sampai:</label>
-            <input
-              type="date"
-              value={filters.date_to}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFilterChange('date_to', e.target.value)}
-              className="input w-40"
-            />
-          </div>
         </div>
       </Card>
 
